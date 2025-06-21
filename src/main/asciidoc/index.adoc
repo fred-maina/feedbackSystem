@@ -1,0 +1,82 @@
+= API Documentation
+:doctype: book
+:icons: font
+:source-highlighter: highlightjs
+:toc: left
+:toclevels: 4
+:sectlinks:
+
+This document provides documentation for the available API endpoints.
+
+== Admin Endpoints
+
+=== Register a New Admin
+
+This endpoint allows for the registration of a new admin user.
+
+==== Request
+
+include::{snippets}/admin-register/http-request.adoc[]
+
+==== Form Parameters
+
+include::{snippets}/admin-register/form-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/admin-register/http-response.adoc[]
+
+
+=== Get Current Admin
+
+This endpoint retrieves the name of the currently authenticated admin.
+
+==== Request
+
+include::{snippets}/admin-me/http-request.adoc[]
+
+==== Cookies
+
+include::{snippets}/admin-me/request-cookies.adoc[]
+
+==== Response
+
+include::{snippets}/admin-me/http-response.adoc[]
+
+== Feedback Endpoints
+
+=== Send Feedback to an Admin
+
+This endpoint allows sending feedback to a specific admin.
+
+==== Request
+
+include::{snippets}/feedback-send/http-request.adoc[]
+
+==== Path Parameters
+
+include::{snippets}/feedback-send/path-parameters.adoc[]
+
+==== Request Body
+
+include::{snippets}/feedback-send/request-fields.adoc[]
+
+==== Response
+
+include::{snippets}/feedback-send/http-response.adoc[]
+
+=== Retrieve Your Feedback
+
+This endpoint retrieves all feedback submitted for the currently authenticated admin.
+
+==== Request
+
+include::{snippets}/feedback-mine/http-request.adoc[]
+
+==== Cookies
+
+include::{snippets}/feedback-mine/request-cookies.adoc[]
+
+==== Response
+
+include::{snippets}/feedback-mine/http-response.adoc[]

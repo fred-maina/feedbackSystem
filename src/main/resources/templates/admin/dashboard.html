@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Real-time Feedback</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F3E9D2; /* Corkboard-like color */
+        }
+        .hidden { display: none; }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translate3d(0, -20%, 0) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translate3d(0, 0, 0) scale(1);
+            }
+        }
+
+        .animate-fade-in-down {
+            animation: fadeInDown 0.6s ease-out forwards;
+        }
+
+        .sticky-note {
+            font-family: 'Gochi Hand', cursive;
+            font-size: 1.25rem;
+            line-height: 1.5;
+            color: #333;
+            padding: 1.5rem;
+            box-shadow: 5px 5px 7px rgba(33,33,33,.7);
+            transition: transform .15s linear;
+        }
+
+        .sticky-note:hover {
+            transform: scale(1.05);
+        }
+
+        .sticky-note-1 { background-color: #FFFF88; transform: rotate(2deg); }
+        .sticky-note-2 { background-color: #A6E6A2; transform: rotate(-2deg); }
+        .sticky-note-3 { background-color: #FFC1A9; transform: rotate(1deg); }
+        .sticky-note-4 { background-color: #A4D8F3; transform: rotate(-1deg); }
+
+    </style>
+</head>
+<body class="text-slate-800">
+
+<header class="bg-white shadow-md sticky top-0 z-10">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-20">
+            <h1 class="text-3xl font-bold text-slate-900">Feedback Board</h1>
+            <div id="average-rating-container" class="flex flex-col items-center justify-center bg-indigo-100 p-3 rounded-lg shadow-inner">
+                <h3 class="font-bold text-lg text-indigo-800">Average Rating</h3>
+                <p id="average-rating" class="text-5xl font-bold text-indigo-600">0.0</p>
+            </div>
+            <a href="/" class="text-sm text-indigo-600 hover:underline">Logout</a>
+        </div>
+    </div>
+</header>
+
+<main class="container mx-auto p-4 sm:p-6 lg:p-8">
+
+    <div id="share-link-container" class="hidden bg-white p-4 rounded-xl shadow-lg mb-8 text-center">
+        <p class="text-sm text-slate-500 mb-2">Share this link with your users to collect feedback:</p>
+        <div class="flex items-center justify-center space-x-2">
+            <input type="text" id="share-link" readonly class="bg-slate-100 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center">
+            <button id="copy-link-button" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold px-3 py-1 rounded-md focus:outline-none focus:shadow-outline text-sm">Copy</button>
+        </div>
+        <p id="copy-success" class="text-green-600 text-xs mt-1 hidden">Copied!</p>
+    </div>
+
+    <div id="loading-indicator" class="text-center py-10">
+        <p class="text-slate-500">Loading feedback...</p>
+    </div>
+
+    <div id="empty-state" class="hidden text-center bg-white rounded-lg shadow p-10">
+        <p class="text-slate-500 font-medium">No feedback has been submitted yet. Waiting for the first one!</p>
+    </div>
+
+    <div id="feedback-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    </div>
+</main>
+
+<template id="feedback-card-template">
+    <div class="sticky-note">
+        <p class="message-text flex-grow mb-4"></p>
+        <div class="border-t border-slate-300 border-dashed pt-4 mt-auto text-right">
+            <p class="rating-text text-xl mb-1"></p>
+            <p class="timestamp-text text-sm text-slate-500"></p>
+        </div>
+    </div>
+</template>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const sessionId = localStorage.getItem('admin-session-id');
+
+        // Elements for shareable link
+        const shareLinkContainer = document.getElementById('share-link-container');
+        const shareLinkInput = document.getElementById('share-link');
+        const copyLinkButton = document.getElementById('copy-link-button');
+        const copySuccessMessage = document.getElementById('copy-success');
+
+        // Elements for feedback stream
+        const feedbackGrid = document.getElementById('feedback-grid');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const emptyState = document.getElementById('empty-state');
+        const cardTemplate = document.getElementById('feedback-card-template');
+        const averageRatingElement = document.getElementById('average-rating');
+
+
+        const fetchAdminInfo = async () => {
+            if (!sessionId) return;
+            try {
+                const response = await fetch('/api/admins/me', {
+                    headers: { 'Authorization': 'Bearer ' + sessionId }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.name) {
+                        const adminName = data.name;
+                        const feedbackUrl = `${window.location.origin}/feedback?admin=${encodeURIComponent(adminName)}`;
+                        shareLinkInput.value = feedbackUrl;
+                        shareLinkContainer.classList.remove('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch admin info:', error);
+            }
+        };
+
+        copyLinkButton.addEventListener('click', () => {
+            shareLinkInput.select();
+            navigator.clipboard.writeText(shareLinkInput.value).then(() => {
+                copySuccessMessage.classList.remove('hidden');
+                setTimeout(() => {
+                    copySuccessMessage.classList.add('hidden');
+                }, 2000);
+            });
+        });
+
+        const formatTimestamp = (timestamp) => {
+            return new Date(timestamp).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+        };
+
+        const createFeedbackCard = (feedback, animate = false) => {
+            const cardClone = cardTemplate.content.cloneNode(true);
+            const cardElement = cardClone.firstElementChild;
+
+            // Apply a random sticky note style
+            const noteStyles = ['sticky-note-1', 'sticky-note-2', 'sticky-note-3', 'sticky-note-4'];
+            const randomStyle = noteStyles[Math.floor(Math.random() * noteStyles.length)];
+            cardElement.classList.add(randomStyle);
+
+            cardElement.querySelector('.message-text').textContent = feedback.message;
+            cardElement.querySelector('.timestamp-text').textContent = formatTimestamp(feedback.timestamp);
+            cardElement.querySelector('.rating-text').textContent = '⭐️'.repeat(feedback.rating);
+
+            if (animate) {
+                cardElement.classList.add('animate-fade-in-down');
+            }
+            return cardElement;
+        };
+
+        const fetchInitialFeedback = async () => {
+            if (!sessionId) {
+                loadingIndicator.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.querySelector('p').textContent = 'You are not logged in. Please register or log in to see your dashboard.';
+                return;
+            }
+            try {
+                const response = await fetch('/api/feedback/mine', {
+                    headers: { 'Authorization': 'Bearer ' + sessionId }
+                });
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        window.location.href = '/admin/register';
+                    }
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const dashboardData = await response.json();
+                loadingIndicator.classList.add('hidden');
+                averageRatingElement.textContent = dashboardData.averageRating.toFixed(1);
+                if (dashboardData.feedbacks && dashboardData.feedbacks.length > 0) {
+                    // Sort feedbacks to show the latest first, just in case they are not already sorted
+                    dashboardData.feedbacks.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    feedbackGrid.innerHTML = ''; // Clear existing notes before re-populating
+                    dashboardData.feedbacks.forEach(feedback => feedbackGrid.appendChild(createFeedbackCard(feedback)));
+                } else {
+                    emptyState.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error("Failed to fetch initial feedback:", error);
+                loadingIndicator.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.querySelector('p').textContent = 'Could not load feedback. Please try again later.';
+            }
+        };
+
+        const connectWebSocket = () => {
+            if (!sessionId) { return; }
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.host}/ws/admin?sessionId=${sessionId}`;
+            const socket = new WebSocket(wsUrl);
+            socket.onopen = () => console.log('WebSocket connection established.');
+            socket.onmessage = (event) => {
+                const feedback = JSON.parse(event.data);
+                if (!emptyState.classList.contains('hidden')) {
+                    emptyState.classList.add('hidden');
+                }
+                feedbackGrid.prepend(createFeedbackCard(feedback, true));
+                // Re-fetch to update average rating and ensure order is correct
+                // A more efficient way would be to just update the average rating in the frontend
+                // but this is simpler for now.
+                setTimeout(fetchInitialFeedback, 100); // give it a moment to avoid race conditions
+            };
+            socket.onclose = () => setTimeout(connectWebSocket, 5000);
+            socket.onerror = (error) => console.error('WebSocket error:', error);
+        };
+
+        fetchAdminInfo();
+        fetchInitialFeedback();
+        connectWebSocket();
+    });
+</script>
+</body>
+</html>
