@@ -30,8 +30,8 @@ A simple and effective way to give and receive live feedback.
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/your-username/your-repository.git](https://github.com/your-username/your-repository.git)
-    ```
+[    git clone [https://github.com/fred-maina/feedbackSystem
+](https://github.com/fred-maina/feedbackSystem)    ```
 
 2.  **Navigate to the project directory:**
     ```bash
@@ -63,4 +63,3 @@ Here are the main endpoints:
 
 ## Live Link
 
-[Link to the live application will be here]
