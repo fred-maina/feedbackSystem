@@ -10,15 +10,17 @@ services:
       - redis_data:/data
     networks:
       - app-network
+
   app:
-    build: .
-    container_name: simple:0.0.1-SNAPSHOT
+    image: simple:0.0.1-SNAPSHOT  # Use the image you built
+    container_name: spring-native-app
     ports:
       - "8080:8080"
     depends_on:
       - redis
     environment:
       - SPRING_REDIS_HOST=redis
+      - BPL_JVM_THREAD_COUNT=50  # Optional, helps with low memory
     networks:
       - app-network
 
