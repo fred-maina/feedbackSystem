@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  redis:
+    image: "redis:7-alpine"
+    container_name: redis-db
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+  app:
+    build: .
+    container_name: simple:0.0.1-SNAPSHOT
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+    environment:
+      - SPRING_REDIS_HOST=redis
+    networks:
+      - app-network
+
+volumes:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge
